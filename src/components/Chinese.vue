@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-let answer = "";
+// let answer = "";
 const state = reactive({ message: "", currentQuestion: 0,answer:"" });
 let exams = [
   { question: "「我」的注音是哪個", answer: "ㄨㄛˇ", options: ["ㄛˇ", "ㄨㄛˇ", "ㄊㄚ", "ㄋ一ˇ"] },
@@ -25,7 +25,7 @@ function generateQuestion() {
 <template>
   <div>
     {{ exams[state.currentQuestion].question }}
-    <span v-for="option in exams[state.currentQuestion].options">
+    <span v-for="option in exams[state.currentQuestion].options" :key="option" >
     <input type="radio" v-model="state.answer" :value="option" />
     {{ option }}
   </span>

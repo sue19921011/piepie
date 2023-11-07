@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-let answer = "";
+// let answer = "";
 const state = reactive({ message: "", currentQuestion: 0,answer:[] });
 let exams = [
       { question: "哪些元素屬於鹼金屬?", answer: ["鈉", "鉀"], options: ["鈉", "鉀", "鈣", "鎂"] },
@@ -33,7 +33,7 @@ let exams = [
 <template>
   <div>
     {{ exams[state.currentQuestion].question }}
-    <span v-for="option in exams[state.currentQuestion].options">
+    <span v-for="option in exams[state.currentQuestion].options" :key="option">
     <input type="checkbox" v-model="state.answer" :value="option" />
     {{ option }}
   </span>
