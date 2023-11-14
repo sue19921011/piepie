@@ -1,50 +1,97 @@
 <script setup lang="ts">
-import { reactive, watch } from "vue";
-import { collection, getDocs, getFirestore, query, where } from "firebase/firestore"; 
-import app from "@/components/settings/FirebaseConfig.vue"
+import { ref, onMounted, watch } from 'vue';
+import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
+import app from "@/components/settings/FirebaseConfig.vue";
 
-const state = reactive({choice:1 , answer:[''],message: [''],exams:[{question:"", answer:""}] });
+const questions = ref([]);
+const selectedOptions = ref([]);
+const answerMessages = ref([]);
+const selectedChapter = ref(null);
 
-const db = getFirestore(app);
-const examCollection = collection(db, "Geo");
-generateQuestions();
-let units=[
-  {title:'單元一', value:1},
-  {title:'單元二', value:2},
-]
-//點選select時，會改變state.choice，利用watch，當state.choice改變時，重新讀取題目
-watch(() => state.choice,generateQuestions);
-async function generateQuestions(){
-  console.log(state.choice)
-  state.exams=[];
-  const queryExam = query(examCollection, where("unit", "==", state.choice));
-  const querySnapshot = await getDocs(queryExam);
-  querySnapshot.forEach((doc) => {
-    state.exams.push({question:doc.data().question,answer:doc.data().answer});
-  });
+onMounted(created);
+
+watch(selectedChapter, created);
+
+async function created() {
+  try {
+    const db = getFirestore(app);
+
+    const q = query(collection(db, 'GeoNew'), where('chapter', '==', selectedChapter.value));
+    const querySnapshot = await getDocs(q);
+
+    questions.value = querySnapshot.docs.map(doc => {
+      const questionData = doc.data();
+      questionData.options = Array.isArray(questionData.options) ? questionData.options : [];
+      questionData.answer = Array.isArray(questionData.answer) ? questionData.answer : [];
+      return questionData;
+    });
+
+    
+    selectedOptions.value = Array.from({ length: questions.value.length }, () => []);
+    answerMessages.value = Array(questions.value.length).fill('');
+  } catch (error) {
+    console.error('Error getting questions: ', error);
+  }
 }
 
-function checkAnswers() {
-  state.message = []; // clear previous messages
-  for (let i in state.exams) {
-    if (state.answer[i] !== state.exams[i].answer) {
-      state.message[i]="不正確";
-    }
-    else {
-      state.message[i]="正確";}
-  }
+function submitAnswers() {
+  console.log('user\'s selections：', selectedOptions.value);
 
+  for (let i = 0; i < questions.value.length; i++) {
+    const question = questions.value[i];
+    const userChoices = selectedOptions.value[i];
+
+    if (question.type === '複選') {
+      const correctAnswers = question.answer;
+
+      const isCorrect =
+        correctAnswers.length === userChoices.length &&
+        correctAnswers.every(answer => userChoices.includes(answer));
+
+      answerMessages.value.splice(i, 1, isCorrect ? `答案正確!!!` : `答案錯誤!!!`);
+    }
+  }
 }
 </script>
+
 <template>
-<v-container>
-  <v-select label="請選擇" v-model="state.choice" :items="units" >
-  </v-select>
-  <v-card v-for="(exam, index) in state.exams" :key="index">
-    <v-text-field v-model="state.answer[index]" 
-    :label="exam.question" 
-    :messages="state.message[index]"></v-text-field>
-  </v-card>
-  <v-btn color="primary" @click="checkAnswers">檢查答案</v-btn>
-</v-container>
+  <v-container>
+    <v-select
+      v-model="selectedChapter"
+      :items="['章節一', '章節二']"
+      label="請選擇章節"
+    ></v-select>
+
+    <div v-for="(question, index) in questions" :key="index">
+      <p>{{ question.questionText }}</p>
+      <label class="custom-checkbox" v-if="question.type === '複選'" v-for="(option, optionIndex) in question.options" :key="optionIndex">
+        <input type="checkbox" :value="option" v-model="selectedOptions[index]">
+        {{ option }}
+      </label>
+      <p>{{ answerMessages[index] }}</p>
+    </div>
+    <v-btn @click="submitAnswers" color="primary">檢查答案</v-btn>
+  </v-container>
 </template>
+
+<style scoped>
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.custom-checkbox input {
+  margin-right: 8px;
+  appearance: none;
+  border: 1px solid #000;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  outline: none;
+}
+
+.custom-checkbox input:checked {
+  background-color: #007BFF;
+}
+</style>
